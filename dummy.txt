@@ -1,0 +1,12 @@
+### Amabilté 1
+```{r}
+boxplot(data$amabilite_1 ~ data$genre*data$article, names = c("F + C","M + C","F + D","M + D"),
+        ylab ="Amabilite_1", xlab ="Genre + Article")
+```
+
+
+### Amabilté 2
+```{r}
+boxplot(data$amabilite_1 ~ data$genre*data$article, names = c("F + C","M + C","F + D","M + D"),
+        ylab ="Amabilite_1", xlab ="Genre + Article")
+```

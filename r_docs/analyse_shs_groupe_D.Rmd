@@ -9,9 +9,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Chargement des librairies
+# Chargement des librairies
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(effsize)
 library(Rmisc)
@@ -30,9 +30,9 @@ library(car)
 
 ```
 
-## Chargement et nettoyage des données
+# Chargement et nettoyage des données
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 data <- read_csv("../data/value_data.csv") 
 data$`Duration (in seconds)`<- as.numeric(data$`Duration (in seconds)`)
 data$amabilite_1 <- as.numeric(data$amabilite_1)
@@ -62,71 +62,82 @@ data$genre[data$genre == 1] <- "Feminin"
 
 ```
 
-## Description des données
+# Description des données
 
 ```{r}
 head(data)
 describe(data)
 ```
 
-```{r}
-boxplot(data$amabilite_1 ~ data$genre*data$article)
-```
+# Assomptions
 
-```{r}
-boxplot(data$amabilite_2 ~ data$genre*data$article)
-```
+## Normalité
 
-
-## Assomptions
-
-# Normalité
+### Amabilté 1
 ```{r}
 norm.amabilite_1 <- ggplot(data, aes(amabilite_1))  + 
   geom_histogram(aes(y = ..density..), fill = "white", colour = "black", binwidth = 1) + 
   labs(
-    x= "X",
-    y = "Y") + 
+    x= "Amabilite_1",
+    y = "Proportion") + 
   stat_function(fun=dnorm, args=list(mean = mean(data$amabilite_1, na.rm = TRUE), sd = sd(data$amabilite_1, na.rm = TRUE)), colour = "blue", size=1) +
   theme_bw()
 
 norm.amabilite_1
 ```
 ```{r}
+qplot(sample = data$amabilite_1, stat="qq")
+```
+```{r}
 lillie.test(data$amabilite_1)
-
+```
+```{r}
+length(data$amabilite_1)
+```
+```{r}
 describe(data$amabilite_1, skew = TRUE)
-
 ```
 
-
+### Amabilté 2
 ```{r}
 norm.amabilite_2 <- ggplot(data, aes(amabilite_2))  + 
   geom_histogram(aes(y = ..density..), fill = "white", colour = "black", binwidth = 1) + 
   labs(
-    x= "X",
-    y = "Y") + 
+    x= "Amabilite_2",
+    y = "Proportion") + 
   stat_function(fun=dnorm, args=list(mean = mean(data$amabilite_2, na.rm = TRUE), sd = sd(data$amabilite_2, na.rm = TRUE)), colour = "blue", size=1) +
   theme_bw()
 
 norm.amabilite_2
 ```
 ```{r}
+qplot(sample = data$amabilite_2, stat="qq")
+```
+```{r}
 lillie.test(data$amabilite_2)
-
+```
+```{r}
+length(data$amabilite_2)
+```
+```{r}
 describe(data$amabilite_2, skew = TRUE)
 ```
 
-# Valeurs extrêmes
+## Valeurs extrêmes
 
-```{r}
-boxplot(data$amabilite_1)$out #Valeurs des VE
-```
+### Amabilté 1
 ```{r}
 boxplot(data$amabilite_1)$out #Valeurs des VE
 ```
 
-# Homogénéité des variances :
+### Amabilté 2
+```{r}
+boxplot(data$amabilite_2)$out #Valeurs des VE
+```
+
+## Homogénéité des variances :
+
+### Amabilté 1
 ```{r}
 # Levene test
 leveneTest(amabilite_1 ~ genre*article, data=data, center = mean)  %>%  
@@ -138,21 +149,22 @@ test.desc <- aggregate(formula = amabilite_1 ~ genre*article, data =data, FUN = 
 tab_df(test.desc)
 ```
 
+### Amabilté 2
 ```{r}
 # Levene test
 leveneTest(amabilite_2 ~ genre*article, data=data, center = mean)  %>%  
   knitr::kable(., digits = 2, format = "html", align = 'c') %>% 
   kableExtra::kable_styling(., bootstrap_options = "striped")
 ```
-
 ```{r}
 test.desc <- aggregate(formula = amabilite_2 ~ genre*article, data = data, FUN = describe) %>% as.data.frame()
 tab_df(test.desc)
 ```
 
 
-# Heteroscedasticité
+## Heteroscedasticité
 
+### Amabilté 1
 ```{r}
 mod1 <- lm(amabilite_1 ~ genre + article + genre*article, data = data, na.action = na.omit)
 
@@ -172,6 +184,7 @@ qqplot.resid <- qplot(sample = data$studentized.residuals, stat="qq") + labs(x =
 qqplot.resid
 ```
 
+### Amabilté 2
 ```{r}
 mod2 <- lm(amabilite_2 ~ genre + article + genre*article, data = data, na.action = na.omit)
 
@@ -191,22 +204,27 @@ qqplot.resid <- qplot(sample = data$studentized.residuals, stat="qq") + labs(x =
 qqplot.resid
 ```
 
-# Independance
+## Independance
 
+### Amabilté 1
 ```{r}
 dwt(mod1)
 ```
+
+### Amabilté 2
 ```{r}
 dwt(mod2)
 ```
 
-# Mutlicolinearité
-
+## Mutlicolinearité
+### Amabilté 1
 ```{r}
 vif(mod1)
 1/vif(mod1)
 mean(vif(mod1))
 ```
+
+### Amabilté 2
 ```{r}
 vif(mod2)
 1/vif(mod2)
@@ -214,15 +232,16 @@ mean(vif(mod2))
 ```
 
 
-## Fidélité : Corrélation entre les deux items :
+# Fidélité : Corrélation entre les deux items :
 
 ```{r}
 cor_res <- cor(data$amabilite_1, data$amabilite_2,  method = "pearson", use = "complete.obs")
 cor_res
 ```
 
-## Régression Linéaire
+# Régression Linéaire
 
+### Amabilté 1
 ```{r}
 model.0 <- lm(amabilite_1 ~ article + genre, data = data, na.action = na.omit)
 summary(model.0)
@@ -254,7 +273,7 @@ anova(model.0, model.1)
 ```
 
 
-
+### Amabilté 2
 ```{r}
 model.0 <- lm(amabilite_2 ~ article + genre, data = data, na.action = na.omit)
 summary(model.0)
