@@ -52,7 +52,7 @@ data <- data %>%
 
 data$article[data$`manifeste_time_d_First Click` > 0] <- "Decroissance" 
 
-data <- data[c("genre" , "amabilite_1" , "amabilite_2", "article")]
+data <- data[c("genre" , "article" , "amabilite_1" , "amabilite_2")]
 
 data$amabilite_1 = 5 - data$amabilite_1 + 1
 
@@ -231,25 +231,59 @@ plot(model.0, which = 1)
 plot(allEffects(model.0))
 
 ```
+
+
+```{r}
+data %>% 
+  ggplot() +
+  aes(x = article, color = genre, group = genre, y = amabilite_1) +
+  stat_summary(fun.y = mean, geom = "line") + 
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", mult = 1)
+```
+
+
+```{r}
+model.1 <- lm(amabilite_1 ~ genre + article + genre*article, data = data, na.action = na.omit)
+summary(model.1)
+plot(model.1, which = 1)
+```
+
+```{r}
+anova(model.0, model.1)
+```
+
+
+
 ```{r}
 model.0 <- lm(amabilite_2 ~ article + genre, data = data, na.action = na.omit)
 summary(model.0)
-plot(allEffects(model.0))
 
 plot(model.0, which = 1)
+
+plot(allEffects(model.0))
 ```
 
 ```{r}
-ggplot(data, aes(x=as.numeric(article), y=amabilite_1, fill=genre, color=genre)) + 
-        geom_point(size = 1.5) + 
-        labs(x = "article", y ="amabilite_1", colour = "Genre") +
-        scale_color_manual(values=c('#999999','#E69F00')) +
-        scale_fill_manual(values =c('#999999','#E69F00')) +
-        guides(fill = F) +
-        geom_smooth(method=lm) +
-        theme_bw() +
-        ylim(4, 5)
+data %>% 
+  ggplot() +
+  aes(x = article, color = genre, group = genre, y = amabilite_2) +
+  stat_summary(fun.y = mean, geom = "line") + 
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", mult = 1)
 ```
+
+
+```{r}
+model.1 <- lm(amabilite_2 ~ genre + article + genre*article, data = data, na.action = na.omit)
+summary(model.1)
+plot(model.1, which = 1)
+```
+
+```{r}
+anova(model.0, model.1)
+```
+
 
 
 
