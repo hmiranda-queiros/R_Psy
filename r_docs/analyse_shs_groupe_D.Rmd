@@ -27,7 +27,6 @@ library(sjPlot)
 library(psych)
 library(kableExtra)
 library(car)
-
 ```
 
 # Chargement et nettoyage des données
@@ -73,7 +72,7 @@ describe(data)
 
 ## Normalité
 
-### Amabilté 1
+### Amabilité 1
 ```{r}
 norm.amabilite_1 <- ggplot(data, aes(amabilite_1))  + 
   geom_histogram(aes(y = ..density..), fill = "white", colour = "black", binwidth = 1) + 
@@ -95,10 +94,10 @@ lillie.test(data$amabilite_1)
 length(data$amabilite_1)
 ```
 ```{r}
-describe(data$amabilite_1, skew = TRUE)
+describe(data$amabilite_1)
 ```
 
-### Amabilté 2
+### Amabilité 2
 ```{r}
 norm.amabilite_2 <- ggplot(data, aes(amabilite_2))  + 
   geom_histogram(aes(y = ..density..), fill = "white", colour = "black", binwidth = 1) + 
@@ -120,24 +119,36 @@ lillie.test(data$amabilite_2)
 length(data$amabilite_2)
 ```
 ```{r}
-describe(data$amabilite_2, skew = TRUE)
+describe(data$amabilite_2)
 ```
 
 ## Valeurs extrêmes
 
-### Amabilté 1
+### Amabilité 1
 ```{r}
-boxplot(data$amabilite_1)$out #Valeurs des VE
+out <- boxplot(data$amabilite_1)$out #Valeurs des VE
+out
 ```
 
-### Amabilté 2
+### Amabilité 2
 ```{r}
-boxplot(data$amabilite_2)$out #Valeurs des VE
+out <- boxplot(data$amabilite_2)$out #Valeurs des VE
 ```
+
+
+```{r}
+out_ind <- which(data$amabilite_2 %in% c(out))
+out_ind
+data[out_ind, ]
+```
+```{r}
+# data <- data[-out_ind,]
+```
+
 
 ## Homogénéité des variances :
 
-### Amabilté 1
+### Amabilité 1
 ```{r}
 # Levene test
 leveneTest(amabilite_1 ~ genre*article, data=data, center = mean)  %>%  
@@ -149,7 +160,7 @@ test.desc <- aggregate(formula = amabilite_1 ~ genre*article, data =data, FUN = 
 tab_df(test.desc)
 ```
 
-### Amabilté 2
+### Amabilité 2
 ```{r}
 # Levene test
 leveneTest(amabilite_2 ~ genre*article, data=data, center = mean)  %>%  
@@ -164,7 +175,7 @@ tab_df(test.desc)
 
 ## Heteroscedasticité
 
-### Amabilté 1
+### Amabilité 1
 ```{r}
 mod1 <- lm(amabilite_1 ~ genre + article + genre*article, data = data, na.action = na.omit)
 
@@ -184,7 +195,7 @@ qqplot.resid <- qplot(sample = data$studentized.residuals, stat="qq") + labs(x =
 qqplot.resid
 ```
 
-### Amabilté 2
+### Amabilité 2
 ```{r}
 mod2 <- lm(amabilite_2 ~ genre + article + genre*article, data = data, na.action = na.omit)
 
@@ -206,25 +217,25 @@ qqplot.resid
 
 ## Independance
 
-### Amabilté 1
+### Amabilité 1
 ```{r}
 dwt(mod1)
 ```
 
-### Amabilté 2
+### Amabilité 2
 ```{r}
 dwt(mod2)
 ```
 
 ## Mutlicolinearité
-### Amabilté 1
+### Amabilité 1
 ```{r}
 vif(mod1)
 1/vif(mod1)
 mean(vif(mod1))
 ```
 
-### Amabilté 2
+### Amabilité 2
 ```{r}
 vif(mod2)
 1/vif(mod2)
@@ -241,7 +252,7 @@ cor_res
 
 # Régression Linéaire
 
-### Amabilté 1
+### Amabilité 1
 ```{r}
 model.0 <- lm(amabilite_1 ~ article + genre, data = data, na.action = na.omit)
 summary(model.0)
@@ -258,7 +269,22 @@ data %>%
   aes(x = article, color = genre, group = genre, y = amabilite_1) +
   stat_summary(fun.y = mean, geom = "line") + 
   stat_summary(fun.y = mean, geom = "point") +
-  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", mult = 1)
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", fun.args = list(mult = 1))
+```
+
+```{r}
+plot <- ggplot(data, aes(article, amabilite_1, colour = genre)) +
+  geom_point(position = position_jitter(width = 0.3, height = 0.1)) + 
+  geom_smooth(aes(group = genre),method = lm) +
+  labs(
+    title = "Scatterplots for test scores",
+    subtitle = "s",
+    caption = "c",
+    x = "x",
+    y = "y") +
+  theme_bw()
+
+plot
 ```
 
 
@@ -273,7 +299,7 @@ anova(model.0, model.1)
 ```
 
 
-### Amabilté 2
+### Amabilité 2
 ```{r}
 model.0 <- lm(amabilite_2 ~ article + genre, data = data, na.action = na.omit)
 summary(model.0)
@@ -289,9 +315,23 @@ data %>%
   aes(x = article, color = genre, group = genre, y = amabilite_2) +
   stat_summary(fun.y = mean, geom = "line") + 
   stat_summary(fun.y = mean, geom = "point") +
-  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", mult = 1)
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", fun.args = list(mult = 1))
 ```
 
+```{r}
+plot <- ggplot(data, aes(article, amabilite_2, colour = genre)) +
+  geom_point(position = position_jitter(width = 0.3, height = 0.1)) + 
+  geom_smooth(aes(group = genre),method = lm) +
+  labs(
+    title = "Scatterplots for test scores",
+    subtitle = "s",
+    caption = "c",
+    x = "x",
+    y = "y") +
+  theme_bw()
+
+plot
+```
 
 ```{r}
 model.1 <- lm(amabilite_2 ~ genre + article + genre*article, data = data, na.action = na.omit)
