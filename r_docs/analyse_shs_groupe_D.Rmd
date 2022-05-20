@@ -36,7 +36,7 @@ data <- read_csv("../data/value_data.csv")
 data$`Duration (in seconds)`<- as.numeric(data$`Duration (in seconds)`)
 data$amabilite_1 <- as.numeric(data$amabilite_1)
 data$amabilite_2 <- as.numeric(data$amabilite_2)
-
+data$age_1 <- as.numeric(data$age_1)
 
 data <- subset(data,`Duration (in seconds)` > 600 & `Duration (in seconds)` < 1800 )
 
@@ -51,7 +51,7 @@ data <- data %>%
 
 data$article[data$`manifeste_time_d_First Click` > 0] <- "Decroissance" 
 
-data <- data[c("genre" , "article" , "amabilite_1" , "amabilite_2")]
+data <- data[c("genre" , "article" , "amabilite_1" , "amabilite_2", "age_1", "regime" , "diplome" , "emploi" , "enfant")]
 
 data$amabilite_1 = 5 - data$amabilite_1 + 1
 
