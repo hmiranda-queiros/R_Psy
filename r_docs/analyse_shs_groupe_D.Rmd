@@ -67,6 +67,29 @@ data$genre[data$genre == 1] <- "Feminin"
 head(data)
 describe(data)
 ```
+### Taille population :
+```{r}
+length(data$article)
+```
+
+### Répartition du genre :
+```{r}
+genre.bar <- ggplot(data, aes(x = article, fill = genre)) 
+genre.bar +
+  geom_bar(stat = "count", position = "dodge") + 
+  ylab("Nombre") +
+  theme_bw()
+```
+
+### Répartition de l'âge :
+```{r}
+age.boxplot <- ggplot(data, aes(x = article, y = age_1, fill=genre)) # créer l'objet ainsi que insérer les data
+age.boxplot + # + ajoute les layers
+  geom_boxplot(size = 0.7,  alpha = 1) + # quelques options du geom
+  labs(x = "Article", y = "Age")+ # les légendes 
+  theme_bw() # un theme pour faire joli
+```
+
 
 # Assomptions
 
