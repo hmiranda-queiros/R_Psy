@@ -1,5 +1,5 @@
 ---
-title: "analyse_shs_groupe_D_moins_30ans"
+title: "analyse_shs_groupe_D_small_diff"
 author: "Groupe D"
 date: '2022-05-04'
 output: html_document
@@ -47,8 +47,6 @@ data <- subset(data, amabilite_1 > 0 & amabilite_2 > 0 & genre < 3)
 
 data <- subset(data, amabilite_1 < 6 & amabilite_2 < 6)
 
-data <- subset(data, age_1 < 30)
-
 data <- data %>% 
   mutate(article = if_else(`manifeste_time_c_First Click` > 0, "Croissance verte", "0"))
 
@@ -63,6 +61,8 @@ data$genre[data$genre == 2] <- "Masculin"
 data$genre[data$genre == 1] <- "Feminin"
 
 data$difference <- abs(data$amabilite_1 - data$amabilite_2)
+
+data <- subset(data, difference < 2)
 
 ```
 
