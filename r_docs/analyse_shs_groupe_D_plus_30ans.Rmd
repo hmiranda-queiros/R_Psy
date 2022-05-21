@@ -1,0 +1,375 @@
+---
+title: "analyse_shs_groupe_D_plus_30ans"
+author: "Groupe D"
+date: '2022-05-04'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Chargement des librairies
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(effsize)
+library(Rmisc)
+library(Hmisc)
+library(ggplot2)
+library(gmodels)
+library(survey)
+library(effects)
+library(rockchalk)
+library(nortest)
+library(pastecs)
+library(sjPlot)
+library(psych)
+library(kableExtra)
+library(car)
+```
+
+# Chargement et nettoyage des données
+
+```{r, message=FALSE, warning=FALSE}
+data <- read_csv("../data/value_data.csv") 
+data$`Duration (in seconds)`<- as.numeric(data$`Duration (in seconds)`)
+data$amabilite_1 <- as.numeric(data$amabilite_1)
+data$amabilite_2 <- as.numeric(data$amabilite_2)
+data$age_1 <- as.numeric(data$age_1)
+
+data <- subset(data,`Duration (in seconds)` > 600 & `Duration (in seconds)` < 1800 )
+
+data <- subset(data, Finished == 1 & Progress == 100)
+
+data <- subset(data, amabilite_1 > 0 & amabilite_2 > 0 & genre < 3)
+
+data <- subset(data, amabilite_1 < 6 & amabilite_2 < 6)
+
+data <- subset(data, age_1 > 29)
+
+data <- data %>% 
+  mutate(article = if_else(`manifeste_time_c_First Click` > 0, "Croissance verte", "0"))
+
+data$article[data$`manifeste_time_d_First Click` > 0] <- "Decroissance" 
+
+data <- data[c("genre" , "article" , "amabilite_1" , "amabilite_2", "age_1", "regime" , "diplome" , "emploi" , "enfant")]
+
+data$amabilite_1 = 5 - data$amabilite_1 + 1
+
+data$genre[data$genre == 2] <- "Masculin"
+
+data$genre[data$genre == 1] <- "Feminin"
+
+```
+
+# Description des données
+
+```{r}
+head(data)
+describe(data)
+```
+### Taille population :
+```{r}
+length(data$article)
+```
+
+### Répartition du genre :
+```{r}
+genre.bar <- ggplot(data, aes(x = article, fill = genre)) 
+genre.bar +
+  geom_bar(stat = "count", position = "dodge") + 
+  ylab("Nombre") +
+  theme_bw()
+```
+
+### Répartition de l'âge :
+```{r}
+age.boxplot <- ggplot(data, aes(x = article, y = age_1, fill=genre)) # créer l'objet ainsi que insérer les data
+age.boxplot + # + ajoute les layers
+  geom_boxplot(size = 0.7,  alpha = 1) + # quelques options du geom
+  labs(x = "Article", y = "Age")+ # les légendes 
+  theme_bw() # un theme pour faire joli
+```
+
+
+# Assomptions
+
+## Normalité
+
+### Amabilité 1
+```{r}
+norm.amabilite_1 <- ggplot(data, aes(amabilite_1))  + 
+  geom_histogram(aes(y = ..density..), fill = "white", colour = "black", binwidth = 1) + 
+  labs(
+    x= "Amabilite_1",
+    y = "Proportion") + 
+  stat_function(fun=dnorm, args=list(mean = mean(data$amabilite_1, na.rm = TRUE), sd = sd(data$amabilite_1, na.rm = TRUE)), colour = "blue", size=1) +
+  theme_bw()
+
+norm.amabilite_1
+```
+```{r}
+qplot(sample = data$amabilite_1, stat="qq")
+```
+```{r}
+lillie.test(data$amabilite_1)
+```
+```{r}
+length(data$amabilite_1)
+```
+```{r}
+describe(data$amabilite_1)
+```
+
+### Amabilité 2
+```{r}
+norm.amabilite_2 <- ggplot(data, aes(amabilite_2))  + 
+  geom_histogram(aes(y = ..density..), fill = "white", colour = "black", binwidth = 1) + 
+  labs(
+    x= "Amabilite_2",
+    y = "Proportion") + 
+  stat_function(fun=dnorm, args=list(mean = mean(data$amabilite_2, na.rm = TRUE), sd = sd(data$amabilite_2, na.rm = TRUE)), colour = "blue", size=1) +
+  theme_bw()
+
+norm.amabilite_2
+```
+```{r}
+qplot(sample = data$amabilite_2, stat="qq")
+```
+```{r}
+lillie.test(data$amabilite_2)
+```
+```{r}
+length(data$amabilite_2)
+```
+```{r}
+describe(data$amabilite_2)
+```
+
+## Valeurs extrêmes
+
+### Amabilité 1
+```{r}
+out <- boxplot(data$amabilite_1)$out #Valeurs des VE
+out
+```
+
+### Amabilité 2
+```{r}
+out <- boxplot(data$amabilite_2)$out #Valeurs des VE
+```
+
+
+```{r}
+out_ind <- which(data$amabilite_2 %in% c(out))
+out_ind
+data[out_ind, ]
+```
+```{r}
+# data <- data[-out_ind,]
+```
+
+
+## Homogénéité des variances :
+
+### Amabilité 1
+```{r}
+# Levene test
+leveneTest(amabilite_1 ~ genre*article, data=data, center = mean)  %>%  
+  knitr::kable(., digits = 2, format = "html", align = 'c') %>% 
+  kableExtra::kable_styling(., bootstrap_options = "striped")
+```
+```{r}
+test.desc <- aggregate(formula = amabilite_1 ~ genre*article, data =data, FUN = describe) %>% as.data.frame()
+tab_df(test.desc)
+```
+
+### Amabilité 2
+```{r}
+# Levene test
+leveneTest(amabilite_2 ~ genre*article, data=data, center = mean)  %>%  
+  knitr::kable(., digits = 2, format = "html", align = 'c') %>% 
+  kableExtra::kable_styling(., bootstrap_options = "striped")
+```
+```{r}
+test.desc <- aggregate(formula = amabilite_2 ~ genre*article, data = data, FUN = describe) %>% as.data.frame()
+tab_df(test.desc)
+```
+
+
+## Heteroscedasticité
+
+### Amabilité 1
+```{r}
+mod1 <- lm(amabilite_1 ~ genre + article + genre*article, data = data, na.action = na.omit)
+
+#fitted values pour plot et std. and studentised residuals dans nos données
+data$fitted <- mod1$fitted.values
+data$standardized.residuals<- rstandard(mod1)
+data$studentized.residuals<-rstudent(mod1)
+
+# plot des fitted values against std. residuals
+scatter.resid <- ggplot(data, aes(fitted, studentized.residuals))
+scatter.resid + geom_point() + geom_smooth(method = "lm", colour = "Blue")+ labs(x = "Fitted
+Values", y = "Studentized Residual")
+
+# qqplot des residuels
+qqplot.resid <- qplot(sample = data$studentized.residuals, stat="qq") + labs(x =
+"Theoretical Values", y = "Observed Values")
+qqplot.resid
+```
+
+### Amabilité 2
+```{r}
+mod2 <- lm(amabilite_2 ~ genre + article + genre*article, data = data, na.action = na.omit)
+
+#fitted values pour plot et std. and studentised residuals dans nos données
+data$fitted <- mod2$fitted.values
+data$standardized.residuals<- rstandard(mod2)
+data$studentized.residuals<-rstudent(mod2)
+
+# plot des fitted values against std. residuals
+scatter.resid <- ggplot(data, aes(fitted, studentized.residuals))
+scatter.resid + geom_point() + geom_smooth(method = "lm", colour = "Blue")+ labs(x = "Fitted
+Values", y = "Studentized Residual")
+
+# qqplot des residuels
+qqplot.resid <- qplot(sample = data$studentized.residuals, stat="qq") + labs(x =
+"Theoretical Values", y = "Observed Values")
+qqplot.resid
+```
+
+## Independance
+
+### Amabilité 1
+```{r}
+dwt(mod1)
+```
+
+### Amabilité 2
+```{r}
+dwt(mod2)
+```
+
+## Mutlicolinearité
+### Amabilité 1
+```{r}
+vif(mod1)
+1/vif(mod1)
+mean(vif(mod1))
+```
+
+### Amabilité 2
+```{r}
+vif(mod2)
+1/vif(mod2)
+mean(vif(mod2))
+```
+
+
+# Fidélité : Corrélation entre les deux items :
+
+```{r}
+cor_res <- cor(data$amabilite_1, data$amabilite_2,  method = "pearson", use = "complete.obs")
+cor_res
+```
+
+# Régression Linéaire
+
+### Amabilité 1
+```{r}
+model.0 <- lm(amabilite_1 ~ article + genre, data = data, na.action = na.omit)
+summary(model.0)
+plot(model.0, which = 1)
+
+plot(allEffects(model.0))
+
+```
+
+
+```{r}
+data %>% 
+  ggplot() +
+  aes(x = article, color = genre, group = genre, y = amabilite_1) +
+  stat_summary(fun.y = mean, geom = "line") + 
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", fun.args = list(mult = 1))
+```
+
+```{r}
+plot <- ggplot(data, aes(article, amabilite_1, colour = genre)) +
+  geom_point(position = position_jitter(width = 0.3, height = 0.1)) + 
+  geom_smooth(aes(group = genre),method = lm) +
+  labs(
+    title = "Scatterplots for test scores",
+    subtitle = "s",
+    caption = "c",
+    x = "x",
+    y = "y") +
+  theme_bw()
+
+plot
+```
+
+
+```{r}
+model.1 <- lm(amabilite_1 ~ genre + article + genre*article, data = data, na.action = na.omit)
+summary(model.1)
+plot(model.1, which = 1)
+```
+
+```{r}
+anova(model.0, model.1)
+```
+
+
+### Amabilité 2
+```{r}
+model.0 <- lm(amabilite_2 ~ article + genre, data = data, na.action = na.omit)
+summary(model.0)
+
+plot(model.0, which = 1)
+
+plot(allEffects(model.0))
+```
+
+```{r}
+data %>% 
+  ggplot() +
+  aes(x = article, color = genre, group = genre, y = amabilite_2) +
+  stat_summary(fun.y = mean, geom = "line") + 
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", fun.args = list(mult = 1))
+```
+
+```{r}
+plot <- ggplot(data, aes(article, amabilite_2, colour = genre)) +
+  geom_point(position = position_jitter(width = 0.3, height = 0.1)) + 
+  geom_smooth(aes(group = genre),method = lm) +
+  labs(
+    title = "Scatterplots for test scores",
+    subtitle = "s",
+    caption = "c",
+    x = "x",
+    y = "y") +
+  theme_bw()
+
+plot
+```
+
+```{r}
+model.1 <- lm(amabilite_2 ~ genre + article + genre*article, data = data, na.action = na.omit)
+summary(model.1)
+plot(model.1, which = 1)
+```
+
+```{r}
+anova(model.0, model.1)
+```
+
+
+
+
+
+
