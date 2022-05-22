@@ -28,6 +28,8 @@ library(psych)
 library(kableExtra)
 library(car)
 library(PMCMRplus)
+library(lm.beta)
+library(pwr)
 ```
 
 # Chargement et nettoyage des données
@@ -72,21 +74,35 @@ data$difference <- abs(data$amabilite_1 - data$amabilite_2)
 head(data)
 describe(data)
 ```
+
 ### Taille population :
 ```{r}
 length(data$article)
 ```
 
-### Répartition du genre :
+### Valeurs descriptives Amabilite_1 :
 ```{r}
-genre.bar <- ggplot(data, aes(x = article, fill = genre)) 
+test.desc <- aggregate(formula = amabilite_1 ~ genre*article, data = data, FUN = describe) %>% as.data.frame()
+tab_df(test.desc)
+```
+
+### Valeurs descriptives Amabilite_2 :
+```{r}
+test.desc <- aggregate(formula = amabilite_2 ~ genre*article, data = data, FUN = describe) %>% as.data.frame()
+tab_df(test.desc)
+```
+
+## Répartition du genre :
+```{r}
+genre.bar <- ggplot(data, aes(y = (..count..)/sum(..count..), x = article, fill = genre)) 
 genre.bar +
-  geom_bar(stat = "count", position = "dodge") + 
-  ylab("Nombre") +
+  scale_y_continuous(labels = scales::percent) +
+  geom_bar(position = "dodge") + 
+  ylab("Proportion") +
   theme_bw()
 ```
 
-### Répartition de l'âge :
+## Répartition de l'âge :
 ```{r}
 age.boxplot <- ggplot(data, aes(x = article, y = age_1, fill=genre)) # créer l'objet ainsi que insérer les data
 age.boxplot + # + ajoute les layers
@@ -95,19 +111,76 @@ age.boxplot + # + ajoute les layers
   theme_bw() # un theme pour faire joli
 ```
 
-### Disparité des réponses :
+## Réponse item amabilite_1 :
+
 ```{r}
-genre.bar <- ggplot(data, aes(x = difference, fill = genre)) 
+genre.bar <- ggplot(data, aes(y = (..count..)/sum(..count..), x = amabilite_1, fill = genre)) 
 genre.bar +
-  geom_bar(stat = "count", position = "dodge") + 
-  ylab("Nombre") +
+  scale_y_continuous(labels = scales::percent) +
+  geom_bar(position = "dodge") + 
+  ylab("Proportion") +
   theme_bw()
 ```
 ```{r}
-genre.bar <- ggplot(data, aes(x = difference)) 
+genre.bar <- ggplot(data, aes(y = (..count..)/sum(..count..), x = amabilite_1, fill = article)) 
 genre.bar +
-  geom_bar(stat = "count", position = "dodge") + 
-  ylab("Nombre") +
+  scale_y_continuous(labels = scales::percent) +
+  geom_bar(position = "dodge") + 
+  ylab("Proportion") +
+  theme_bw()
+```
+```{r}
+genre.bar <- ggplot(data, aes(y = (..count..)/sum(..count..), x = amabilite_1)) 
+genre.bar +
+  scale_y_continuous(labels = scales::percent) +
+  geom_bar(position = "dodge", fill = "Orange") + 
+  ylab("Proportion") +
+  theme_bw()
+```
+
+
+## Réponse item amabilite_2 :
+
+```{r}
+genre.bar <- ggplot(data, aes(y = (..count..)/sum(..count..), x = amabilite_2, fill = genre)) 
+genre.bar +
+  scale_y_continuous(labels = scales::percent) +
+  geom_bar(position = "dodge") + 
+  ylab("Proportion") +
+  theme_bw()
+```
+```{r}
+genre.bar <- ggplot(data, aes(y = (..count..)/sum(..count..), x = amabilite_2, fill = article)) 
+genre.bar +
+  scale_y_continuous(labels = scales::percent) +
+  geom_bar(position = "dodge") + 
+  ylab("Proportion") +
+  theme_bw()
+```
+```{r}
+genre.bar <- ggplot(data, aes(y = (..count..)/sum(..count..), x = amabilite_2)) 
+genre.bar +
+  scale_y_continuous(labels = scales::percent) +
+  geom_bar(position = "dodge", fill = "Orange") + 
+  ylab("Proportion") +
+  theme_bw()
+```
+
+## Disparité des réponses pour les deux items :
+```{r}
+genre.bar <- ggplot(data, aes(y = (..count..)/sum(..count..), x = difference, fill = genre)) 
+genre.bar +
+  scale_y_continuous(labels = scales::percent) +
+  geom_bar(position = "dodge") + 
+  ylab("Proportion") +
+  theme_bw()
+```
+```{r}
+genre.bar <- ggplot(data, aes(y = (..count..)/sum(..count..), x = difference)) 
+genre.bar +
+  scale_y_continuous(labels = scales::percent) +
+  geom_bar(position = "dodge", fill = "Orange") + 
+  ylab("Proportion") +
   theme_bw()
 ```
 
@@ -119,12 +192,18 @@ genre.bar +
 Interprétation : 
 
 La normalité peut-être controlée de manière visuelle :
+
 - histogramme (devraient suivre une courbe normale)
+
 - boxplots (moyenne et médiane au milieu de la boite, moustache égales, pas d’outliers)
+
 - qqplot (devraient suivre la diagonale)
 
+
 Avec des chiffres :
+
 - test de Liliefors si p-value < 0.05 alors l'hypothèse selon laquelle la distribution suit une loi normale est rejetée (résultat significatif), souvent sgnificatif si N > 50.
+
 - Skew and Kurtosis : Pour avoir une distribution la plus proche d'une loi normale on veut skew très proche de 0 pour assurer la symétrie de la distribution et Kurtosis très proche de 0 pour assurer que la distribution des valeurs extrêmes soit proche de celle d'une loi normale.  
 
 ### Amabilité 1
@@ -218,7 +297,9 @@ Après étude du profils des outliers ils ne semblent pas abérrants et au contr
 ## Homogénéité des variances :
 
 Interprétation : Il faut que les variances de chaque variable soient égales afin de pouvoir être comparable.
+
 - on utilise soit le test de Lavene (qui doit être non significatif) càd avoir une p-value > 0.05 pour qu'on considère que les variances soient homogènes (ici p-value correspond a la colonne Pr(<F))
+
 - on utilise hartley Test (qui doit être non significatif) càd avoir une p-value > 0.05 pour qu'on considère que les variances soient homogènes.
 
 ### Amabilité 1
@@ -258,7 +339,8 @@ hartleyTest(formula = amabilite_2 ~ interaction(genre, article), data=data)
 ## Heteroscedasticité
 
 Interprétation : Il convient de contrôler que la variance des résiduels soient égales à chaque degré de nos prédicteurs; qu’ils soient donc homoscedastique. Sans quoi nos conditions/variables prédictrice continues ne serait pas comparables.
-ceci se teste par inspection visuelle: On doit obtenir une ligne horizontale dans le plot des studentized residuals pour que nos variables soient homoscedastiques. On doit aussi obtenir une diagonale dans le qqplot des residuels.
+
+Ceci se teste par inspection visuelle: On doit obtenir une ligne horizontale dans le plot des studentized residuals pour que nos variables soient homoscedastiques. On doit aussi obtenir une diagonale dans le qqplot des residuels.
 
 ### Amabilité 1
 ```{r}
@@ -303,6 +385,7 @@ qqplot.resid
 ## Independance
 
 On peut contrôler ceci avec un test de Durbin-Watson
+
 Interprétation : On veut que les observations soient indépendantes pour pouvoir réaliser la régression linéaire et pour cela on doit avoir une p-value > 0.05 pour que l'hypothèse nulle de non auto-corrélation soit validée par le test. 
 
 ### Amabilité 1
@@ -318,6 +401,7 @@ dwt(mod2)
 ## Mutlicolinearité
 
 Prédicteurs (Variables indépendantes) ne doivent pas être parfaitement corrélés.
+
 Interprétation : To check for multicollinearity, use the VIF values. If these values are less than 10 then that indicates there probably isn’t cause for concern. If you take the average of VIF values, and this average is not substantially greater than 1, then that also indicates that there’s no cause for concern.
 
 ### Amabilité 1
@@ -337,37 +421,31 @@ mean(vif(mod2))
 ## Linéarité :
 
 La relation entre les variables doit suivre une relation linéaire.
+
 inspection visuelle : Ce premier graphique permet de savoir si les valeurs prédites (ou fitted values, en x) et les résidus (ou residuals, en y) suivent une distribution bivariée linéaire. Pour que la condition de linéarité du modèle soit respectée, le segment représenté en rouge doit se situer, idéalement, sur une valeur résiduelle (ou y) égale à 0. 
-Cf les plots "plot(model.X, which = 1)" de la dernière partie sur la régression linéaire pour valider cela
+Cf les plots "plot(model.XX, which = 1)" de la dernière partie sur la régression linéaire pour valider cela
 
 ## Sphéricité :
 
 Pour les mesures répétées à plus de 3 conditions. Or dans notre étude les variables dépendantes amabilite ne sont mesurées qu'une fois par participants donc pas de test de sphéricité nécessaire ici.
 
 
-# Fidélité : Corrélation entre les deux items :
-
-Pas de test de alpha nécessaire ici car nous avons que deux items pour mesurer l'amabilité, un simple test de corrélation est suffisant.
-La corrélation entre les deux items doit être supérieur à 0.3 pour être significative. Sinon cela signifie que les deux items ne mesurent pas la même chose. 
-
-```{r}
-cor_res <- cor(data$amabilite_1, data$amabilite_2,  method = "pearson", use = "complete.obs")
-cor_res
-```
-
 # Régression Linéaire
 
-Pour chaque model on peut regarder sa p-value pour déterminer si les résultats sont significatis ou non (cad si on observe un effet significatif), donc si p-value < 0.05 alors les résultats sont probablement significatifs et on peut les exploiter.
+Pour chaque model on peut regarder sa p-value pour déterminer si les résultats sont significatis ou non (cad si on observe un effet significatif), donc si p-value < 0.05 alors les effets observés sont significatifs et on peut les exploiter.
 
-Ici model.0 est un modèle simple et model.1 est un modèle avec une VI en plus mais grâce à la mesure d'anova on peut savoir si model.1 apporte plus d'info ou non. Si anova(model.0, model.1) donne une p-value(Pr(>F)) > 0.05 alors model.1 est inutile comparé à model.0.
+Ici model.0X est un modèle simple et model.1X est un modèle avec une VI en plus mais grâce à la mesure d'anova on peut savoir si model.1X apporte plus d'info ou non. Si anova(model.0X, model.1X) donne une p-value(Pr(>F)) > 0.05 alors model.1X est inutile comparé à model.0X.
 
 ### Amabilité 1
 ```{r}
-model.0 <- lm(amabilite_1 ~ article + genre, data = data, na.action = na.omit)
-summary(model.0)
-plot(model.0, which = 1)
+model.01 <- lm(amabilite_1 ~ article + genre, data = data, na.action = na.omit)
+summary(model.01)
+plot(model.01, which = 1)
 
-plot(allEffects(model.0))
+#standardized coeff in case needed
+lm.beta(model.01)
+
+plot(allEffects(model.01))
 
 ```
 
@@ -398,24 +476,27 @@ plot
 
 
 ```{r}
-model.1 <- lm(amabilite_1 ~ genre + article + genre*article, data = data, na.action = na.omit)
-summary(model.1)
-plot(model.1, which = 1)
+model.11 <- lm(amabilite_1 ~ genre + article + genre*article, data = data, na.action = na.omit)
+summary(model.11)
+plot(model.11, which = 1)
 ```
 
 ```{r}
-anova(model.0, model.1)
+anova(model.01, model.11)
 ```
 
 
 ### Amabilité 2
 ```{r}
-model.0 <- lm(amabilite_2 ~ article + genre, data = data, na.action = na.omit)
-summary(model.0)
+model.02 <- lm(amabilite_2 ~ article + genre, data = data, na.action = na.omit)
+summary(model.02)
 
-plot(model.0, which = 1)
+#standardized coeff in case needed
+lm.beta(model.02)
 
-plot(allEffects(model.0))
+plot(model.02, which = 1)
+
+plot(allEffects(model.02))
 ```
 
 ```{r}
@@ -443,17 +524,98 @@ plot
 ```
 
 ```{r}
-model.1 <- lm(amabilite_2 ~ genre + article + genre*article, data = data, na.action = na.omit)
-summary(model.1)
-plot(model.1, which = 1)
+model.12 <- lm(amabilite_2 ~ genre + article + genre*article, data = data, na.action = na.omit)
+summary(model.12)
+plot(model.12, which = 1)
 ```
 
 ```{r}
-anova(model.0, model.1)
+anova(model.02, model.12)
+```
+
+
+# Fidélité : Corrélation entre les deux items :
+
+Pas de test de alpha nécessaire ici car nous avons que deux items pour mesurer l'amabilité, un simple test de corrélation est suffisant. (le test alpha a quand même été réalisé pour information et idéalement sa valeur doit être autour de 0.7 et supérieur à 0.3 sinon cela signifie que nos deux items ne sont pas cohérent entre eux)
+
+La corrélation entre les deux items doit être supérieur à 0.3 pour être significative. Sinon cela signifie que les deux items ne mesurent pas la même chose. 
+
+```{r}
+cor_res <- cor(data$amabilite_1, data$amabilite_2,  method = "pearson", use = "complete.obs")
+cor_res
+```
+
+```{r}
+amabilite <- data[, c("amabilite_1", "amabilite_2")]
+psych::alpha(amabilite)
+```
+
+# Analyse de puissance a posteriori :
+
+Power a posteriori is the probability of making a correct decision (to reject the null hypothesis) when the null hypothesis is false. It is represented by the probability (1 - Beta) with beta the probalility of making a Type II error i.e the false acceptance of the null hypothesis.
+
+Here the null hypothesis is that there are no effects between our groups, and our expectation is to reject it i.e show that there are significant effects.
+
+We want a power of at least 0.80 in general, so that the type II error beta is less than 0.20.
+
+To obtain the power a posteriori we need to have the following value :
+
+- significance level alpha : probability of making a type I error i.e the false rejection of the null hypothesis (generally taken as 0.05)
+
+- The effect size : f2 = R² / (1 - R²) with R² that is multiple R-squared from model.0X the Cohen suggests f2 values of 0.02, 0.15, and 0.35 represent small, medium, and large effect sizes. 
+
+- numerator of degrees of freedom : u = the number of predictors - 1 (here we have 2 predictors : genre and article)
+
+- denominator of degrees of freedom : v =  Population size - number of predictors
+
+
+## Amabilité 1
+
+### power 
+```{r}
+R2 <- summary(model.01)$r.squared
+f2 <- R2 / (1 - R2)
+
+pwr.f2.test(u = 2 - 1, v = length(data$amabilite_1) - 2, f2 = f2, sig.level = 0.05 , power = NULL )
+
+```
+
+
+### population size N to have a power of 0.80
+```{r}
+res <- pwr.f2.test(u = 2 - 1, v = NULL, f2 = f2, sig.level = 0.05 , power = 0.80)
+N <- res$v + 2
+N
+```
+### actual population size
+```{r}
+length(data$amabilite_1)
 ```
 
 
 
+## Amabilité 2
+
+### power 
+```{r}
+R2 <- summary(model.02)$r.squared
+f2 <- R2 / (1 - R2)
+
+pwr.f2.test(u = 2 - 1, v = length(data$amabilite_1) - 2, f2 = f2, sig.level = 0.05 , power = NULL )
+
+```
+
+
+### population size N to have a power of 0.80
+```{r}
+res <- pwr.f2.test(u = 2 - 1, v = NULL, f2 = f2, sig.level = 0.05 , power = 0.80)
+N <- res$v + 2
+N
+```
+### actual population size
+```{r}
+length(data$amabilite_1)
+```
 
 
 
