@@ -30,6 +30,7 @@ library(car)
 library(PMCMRplus)
 library(lm.beta)
 library(pwr)
+library(plotrix)
 ```
 
 # Chargement et nettoyage des données
@@ -80,18 +81,6 @@ describe(data)
 length(data$article)
 ```
 
-### Valeurs descriptives Amabilite_1 :
-```{r}
-test.desc <- aggregate(formula = amabilite_1 ~ genre*article, data = data, FUN = describe) %>% as.data.frame()
-tab_df(test.desc)
-```
-
-### Valeurs descriptives Amabilite_2 :
-```{r}
-test.desc <- aggregate(formula = amabilite_2 ~ genre*article, data = data, FUN = describe) %>% as.data.frame()
-tab_df(test.desc)
-```
-
 ## Répartition du genre :
 ```{r}
 genre.bar <- ggplot(data, aes(y = (..count..)/sum(..count..), x = article, fill = genre)) 
@@ -111,7 +100,11 @@ age.boxplot + # + ajoute les layers
   theme_bw() # un theme pour faire joli
 ```
 
-## Réponse item amabilite_1 :
+### Valeurs descriptives Amabilite_1 :
+```{r}
+test.desc <- aggregate(formula = amabilite_1 ~ genre*article, data = data, FUN = describe) %>% as.data.frame()
+tab_df(test.desc)
+```
 
 ```{r}
 genre.bar <- ggplot(data, aes(y = (..count..)/sum(..count..), x = amabilite_1, fill = genre)) 
@@ -138,8 +131,26 @@ genre.bar +
   theme_bw()
 ```
 
+```{r}
+df <- ddply(data, c("genre", "article"), dplyr::summarize,
+            Mean = mean(amabilite_1, na.rm=T),
+            SE   = std.error(amabilite_1, na.rm=T))
+df
 
-## Réponse item amabilite_2 :
+genre.bar <- ggplot(df , aes(x = article, y = Mean, fill = genre)) 
+genre.bar +
+  geom_bar(stat = "identity", position = "dodge") + 
+  ylab("Moyenne amabilite_1") +
+  geom_errorbar(aes(ymin = Mean-SE, ymax = Mean+SE), width = 0.2, position = position_dodge(0.9)) +
+  theme_bw()
+```
+
+
+### Valeurs descriptives Amabilite_2 :
+```{r}
+test.desc <- aggregate(formula = amabilite_2 ~ genre*article, data = data, FUN = describe) %>% as.data.frame()
+tab_df(test.desc)
+```
 
 ```{r}
 genre.bar <- ggplot(data, aes(y = (..count..)/sum(..count..), x = amabilite_2, fill = genre)) 
@@ -163,6 +174,20 @@ genre.bar +
   scale_y_continuous(labels = scales::percent) +
   geom_bar(position = "dodge", fill = "Orange") + 
   ylab("Proportion") +
+  theme_bw()
+```
+
+```{r}
+df <- ddply(data, c("genre", "article"), dplyr::summarize,
+            Mean = mean(amabilite_2, na.rm=T),
+            SE   = std.error(amabilite_2, na.rm=T))
+df
+
+genre.bar <- ggplot(df , aes(x = article, y = Mean, fill = genre)) 
+genre.bar +
+  geom_bar(stat = "identity", position = "dodge") + 
+  ylab("Moyenne amabilite_2") +
+  geom_errorbar(aes(ymin = Mean-SE, ymax = Mean+SE), width = 0.2, position = position_dodge(0.9)) +
   theme_bw()
 ```
 
@@ -616,6 +641,5 @@ N
 ```{r}
 length(data$amabilite_1)
 ```
-
 
 
